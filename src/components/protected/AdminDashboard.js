@@ -55,11 +55,13 @@ export default class AdminDashboard extends Component {
         p8: { name: '', students: {}, max: 0 },
         p9: { name: '', students: {}, max: 0 },
       },
+      searchQuery: '', // Added for search functionality
     };
     //bind
     this.handleWaiver = this.handleWaiver.bind(this);
     this.handleWaiverSubmit = this.handleWaiverSubmit.bind(this);
     this.copytoClipboard = this.copytoClipboard.bind(this);
+    this.handleSearchChange = this.handleSearchChange.bind(this); // Bind search handler
   }
 
   copytoClipboard = (text) => {
@@ -84,6 +86,10 @@ export default class AdminDashboard extends Component {
       this.copytoClipboard(uid);
     }
   };
+
+  handleSearchChange(event) {
+    this.setState({ searchQuery: event.target.value });
+  }
 
   generateOptions() {
     var options = [];
@@ -173,138 +179,15 @@ export default class AdminDashboard extends Component {
     );
   }
 
-  generateSchoolOptions() {
-    var options = [];
-    for (var i = 0; i < this.state.schoolsList.length; i++) {
-      options.push(
-        <option
-          key={this.state.schoolsList[i][1]}
-          value={this.state.schoolsList[i][1]}
-        >
-          {this.state.schoolsList[i][0]}
-        </option>
-      );
-    }
-
-    return options;
-  }
-
-  generateStatusBars() {
-    var length = Object.keys(this.state.plenOptions).length;
-    var bars = [];
-    //<h5>
-    //{this.state.plenOptions.p1.name}:
-    //<Progress
-    //value={
-    //this.state.plenOptions.p1.students
-    //? Object.keys(this.state.plenOptions.p1.students).length
-    //: 0
-    //}
-    //max={this.state.plenOptions.p1.max}
-    ///>
-    //{this.state.plenOptions.p1.students
-    //? Object.keys(this.state.plenOptions.p1.students).length
-    //: 0}
-    ///{this.state.plenOptions.p1.max}
-    //</h5>
-
-    for (var i = 1; i < length; i++) {
-      var plen = this.state.plenOptions['p' + i];
-      bars.push(
-        <Row>
-          <Col>
-            <h5>
-              {plen.name}:
-              <Progress
-                value={plen.students ? Object.keys(plen.students).length : 0}
-                max={plen.max}
-              />
-              {plen.students ? Object.keys(plen.students).length : 0}/{plen.max}
-            </h5>
-          </Col>
-        </Row>
-      );
-    }
-
-    return bars;
-  }
-
-  generateTeacherOptions() {
-    var options = [];
-    for (var i = 0; i < this.state.teacherList.length; i++) {
-      options.push(
-        <option
-          key={this.state.teacherList[i][1]}
-          value={this.state.teacherList[i][1]}
-        >
-          {this.state.teacherList[i][0]}, {this.state.teacherList[i][2]}
-        </option>
-      );
-    }
-
-    return options;
-  }
-
-  handleWaiver = (event) => {
-    this.setState({
-      waiverSelectedSchool: event.target.value,
-    });
-  };
-
-  handleWaiverSubmit = async (event) => {
-    var school = this.state.waiverSelectedSchool;
-    await ref.child('teachers/' + school).update({
-      waiver: true,
-    });
-  };
-
-  handleAddAttendee = async (event) => {
-    event.preventDefault();
-    var name = event.target.name.value;
-    var email = event.target.email.value;
-    var school = event.target.access.value;
-    var grade = event.target.grade.value;
-    try {
-      var uid = await addAttendee(
-        email,
-        (Math.random() + 1).toString(36),
-        name,
-        grade,
-        school
-      );
-      console.log(uid.uid);
-      this.copytoClipboard(uid.uid);
-      alert('Added attendee with UID:' + uid.uid);
-    } catch (e) {
-      alert(e);
-    }
-  };
-
-  resetPassword = () => {
-    console.log('resetting password for ' + this.state.modal[1]);
-    adminResetPassword(this.state.modal[1]);
-    this.toggle();
-  };
-
-  deleteAccount = () => {
-    console.log(
-      'deleting account for ' +
-        this.state.modal[1] +
-        'uid: ' +
-        this.state.modal[3] +
-        'tid' +
-        this.state.modal[2]
-    );
-    deleteUserData(this.state.modal[3], this.state.modal[2]);
-    this.toggle();
-  };
-
   generateRows(list) {
+    const filteredList = Object.entries(list).filter(([key, student]) =>
+      student.name.toLowerCase().includes(this.state.searchQuery.toLowerCase())
+    );
+
     var rows = [];
     let previousSchool = '';
-    Object.entries(list).forEach((student, index) => {
+    filteredList.forEach((student, index) => {
       if (student[1].school !== previousSchool) {
-        // Add devider row
         rows.push(
           <tr>
             <td colSpan="6" className="table-secondary">
@@ -642,6 +525,12 @@ export default class AdminDashboard extends Component {
 
         <h2>All Attendees</h2>
 
+        <Input
+          type="text"
+          placeholder="Search by name..."
+          value={this.state.searchQuery}
+          onChange={this.handleSearchChange}
+        />
         <div id="table">
           <Table className="table">
             <thead>

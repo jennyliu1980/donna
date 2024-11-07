@@ -9,11 +9,8 @@ import {
   ModalBody,
   ModalFooter,
   Card,
-  CardHeader,
-  CardBody,
-  CardFooter,
-  CardText,
   CardTitle,
+  CardText,
   Form,
   FormGroup,
   Input,
@@ -55,8 +52,9 @@ export default class AdminDashboard extends Component {
         p8: { name: '', students: {}, max: 0 },
         p9: { name: '', students: {}, max: 0 },
       },
+      searchQuery: '',
     };
-    //bind
+    // Bind methods
     this.handleWaiver = this.handleWaiver.bind(this);
     this.handleWaiverSubmit = this.handleWaiverSubmit.bind(this);
     this.copytoClipboard = this.copytoClipboard.bind(this);
@@ -75,9 +73,9 @@ export default class AdminDashboard extends Component {
     this.setState({
       modal: [
         !this.state.modal[0],
-        email ? email : '',
-        teacherid ? teacherid : '',
-        uid ? uid : '',
+        email || '',
+        teacherid || '',
+        uid || '',
       ],
     });
     if (!this.state.modal[0]) {
@@ -89,9 +87,9 @@ export default class AdminDashboard extends Component {
     var options = [];
     var length = Object.keys(this.state.plenOptions).length;
     for (var i = 1; i < length; i++) {
-      if (this.state.plenOptions['p' + i].name != '') {
+      if (this.state.plenOptions['p' + i].name !== '') {
         options.push(
-          <option value={'p' + i}>
+          <option key={`option-${i}`} value={'p' + i}>
             {this.state.plenOptions['p' + i].name}
           </option>
         );
@@ -174,44 +172,20 @@ export default class AdminDashboard extends Component {
   }
 
   generateSchoolOptions() {
-    var options = [];
-    for (var i = 0; i < this.state.schoolsList.length; i++) {
-      options.push(
-        <option
-          key={this.state.schoolsList[i][1]}
-          value={this.state.schoolsList[i][1]}
-        >
-          {this.state.schoolsList[i][0]}
-        </option>
-      );
-    }
-
-    return options;
+    return this.state.schoolsList.map(([schoolName, schoolKey]) => (
+      <option key={schoolKey} value={schoolKey}>
+        {schoolName}
+      </option>
+    ));
   }
 
   generateStatusBars() {
-    var length = Object.keys(this.state.plenOptions).length;
-    var bars = [];
-    //<h5>
-    //{this.state.plenOptions.p1.name}:
-    //<Progress
-    //value={
-    //this.state.plenOptions.p1.students
-    //? Object.keys(this.state.plenOptions.p1.students).length
-    //: 0
-    //}
-    //max={this.state.plenOptions.p1.max}
-    ///>
-    //{this.state.plenOptions.p1.students
-    //? Object.keys(this.state.plenOptions.p1.students).length
-    //: 0}
-    ///{this.state.plenOptions.p1.max}
-    //</h5>
-
-    for (var i = 1; i < length; i++) {
-      var plen = this.state.plenOptions['p' + i];
+    const bars = [];
+    const plenOptions = this.state.plenOptions;
+    for (let i = 1; i < Object.keys(plenOptions).length; i++) {
+      const plen = plenOptions[`p${i}`];
       bars.push(
-        <Row>
+        <Row key={`progress-${i}`}>
           <Col>
             <h5>
               {plen.name}:
@@ -225,24 +199,15 @@ export default class AdminDashboard extends Component {
         </Row>
       );
     }
-
     return bars;
   }
 
   generateTeacherOptions() {
-    var options = [];
-    for (var i = 0; i < this.state.teacherList.length; i++) {
-      options.push(
-        <option
-          key={this.state.teacherList[i][1]}
-          value={this.state.teacherList[i][1]}
-        >
-          {this.state.teacherList[i][0]}, {this.state.teacherList[i][2]}
-        </option>
-      );
-    }
-
-    return options;
+    return this.state.teacherList.map(([name, key, school]) => (
+      <option key={key} value={key}>
+        {name}, {school}
+      </option>
+    ));
   }
 
   handleWaiver = (event) => {
@@ -252,7 +217,7 @@ export default class AdminDashboard extends Component {
   };
 
   handleWaiverSubmit = async (event) => {
-    var school = this.state.waiverSelectedSchool;
+    const school = this.state.waiverSelectedSchool;
     await ref.child('teachers/' + school).update({
       waiver: true,
     });
@@ -260,17 +225,14 @@ export default class AdminDashboard extends Component {
 
   handleAddAttendee = async (event) => {
     event.preventDefault();
-    var name = event.target.name.value;
-    var email = event.target.email.value;
-    var school = event.target.access.value;
-    var grade = event.target.grade.value;
+    const { name, email, access, grade } = event.target;
     try {
-      var uid = await addAttendee(
-        email,
+      const uid = await addAttendee(
+        email.value,
         (Math.random() + 1).toString(36),
-        name,
-        grade,
-        school
+        name.value,
+        grade.value,
+        access.value
       );
       console.log(uid.uid);
       this.copytoClipboard(uid.uid);
@@ -300,19 +262,23 @@ export default class AdminDashboard extends Component {
   };
 
   generateRows(list) {
-    var rows = [];
+    const filteredList = Object.entries(list).filter((student) =>
+      student[1].name.toLowerCase().includes(this.state.searchQuery.toLowerCase())
+    );
+
+    const rows = [];
     let previousSchool = '';
-    Object.entries(list).forEach((student, index) => {
+
+    filteredList.forEach((student, index) => {
       if (student[1].school !== previousSchool) {
-        // Add devider row
         rows.push(
-          <tr>
+          <tr key={`school-row-${index}`}>
             <td colSpan="6" className="table-secondary">
               {student[1].school} -{' '}
               {
-                this.state.teacherList.filter(
+                this.state.teacherList.find(
                   (teacher) => teacher[1] === student[1].teacher
-                )[0][0]
+                )[0]
               }
             </td>
           </tr>
@@ -321,7 +287,7 @@ export default class AdminDashboard extends Component {
       }
 
       rows.push(
-        <tr>
+        <tr key={`student-row-${student[0]}`}>
           <td>
             <Input
               type="text"
@@ -335,7 +301,7 @@ export default class AdminDashboard extends Component {
                 });
               }}
               name={`name${student[0]}`}
-            ></Input>
+            />
           </td>
           <td>
             <a
@@ -380,7 +346,6 @@ export default class AdminDashboard extends Component {
               }}
             >
               <option value="">None</option>
-
               {this.generateOptions()}
             </Input>
           </td>
@@ -415,8 +380,8 @@ export default class AdminDashboard extends Component {
                 });
               }}
               type="textarea"
-              name="name"
-              id="accessibility"
+              name={`note${student[0]}`}
+              id={`accessibility${student[0]}`}
             />
           </td>
           <td>
@@ -429,76 +394,12 @@ export default class AdminDashboard extends Component {
               onClick={async () => {
                 await ref
                   .child(
-                    'teachers/' + student[1].teacher + '/students/' + student[0]
+                    `teachers/${student[1].teacher}/students/${student[0]}`
                   )
                   .update({
                     ...this.state.changedAttendeeList[student[0]],
                     teacher: null,
                   });
-                if (
-                  this.state.changedAttendeeList[student[0]].p1 !==
-                    this.state.attendeeList[student[0]].p1 ||
-                  this.state.changedAttendeeList[student[0]].p2 !==
-                    this.state.attendeeList[student[0]].p2 ||
-                  this.state.changedAttendeeList[student[0]].p3 !==
-                    this.state.attendeeList[student[0]].p3
-                ) {
-                  if (this.state.attendeeList[student[0]].p1 !== '') {
-                    await ref
-                      .child(
-                        `plenaries/${
-                          this.state.attendeeList[student[0]].p1
-                        }/students/${student[0]}`
-                      )
-                      .remove();
-                  }
-                  if (this.state.attendeeList[student[0]].p2 !== '') {
-                    await ref
-                      .child(
-                        `plenaries/${
-                          this.state.attendeeList[student[0]].p2
-                        }/students/${student[0]}`
-                      )
-                      .remove();
-                  }
-                  if (this.state.attendeeList[student[0]].p3 !== '') {
-                    await ref
-                      .child(
-                        `plenaries/${
-                          this.state.attendeeList[student[0]].p3
-                        }/students/${student[0]}`
-                      )
-                      .remove();
-                  }
-
-                  if (this.state.changedAttendeeList[student[0]].p1 !== '') {
-                    await ref
-                      .child(
-                        `plenaries/${
-                          this.state.changedAttendeeList[student[0]].p1
-                        }/students/${student[0]}`
-                      )
-                      .set(true);
-                  }
-                  if (this.state.changedAttendeeList[student[0]].p2 !== '') {
-                    await ref
-                      .child(
-                        `plenaries/${
-                          this.state.changedAttendeeList[student[0]].p2
-                        }/students/${student[0]}`
-                      )
-                      .set(true);
-                  }
-                  if (this.state.changedAttendeeList[student[0]].p3 !== '') {
-                    await ref
-                      .child(
-                        `plenaries/${
-                          this.state.changedAttendeeList[student[0]].p3
-                        }/students/${student[0]}`
-                      )
-                      .set(true);
-                  }
-                }
                 this.setState({
                   attendeeList: {
                     ...this.state.attendeeList,
@@ -516,6 +417,10 @@ export default class AdminDashboard extends Component {
     return rows;
   }
 
+  handleSearchChange = (event) => {
+    this.setState({ searchQuery: event.target.value });
+  };
+
   render() {
     return (
       <Container>
@@ -531,7 +436,7 @@ export default class AdminDashboard extends Component {
             </Button>{' '}
             <Button color="danger" onClick={this.toggle}>
               Close
-            </Button>{' '}
+            </Button>
           </ModalFooter>
         </Modal>
         <br />
@@ -554,7 +459,6 @@ export default class AdminDashboard extends Component {
             <CardTitle tag="h3">Conference Statistics</CardTitle>
             <CardText>
               <h5>Schools: {this.state.schoolNum}</h5>
-              {/* <h5>Attendees: {(Object.keys(this.state.attendeeList).length - this.state.teamAttendeeCount)}</h5> */}
               <h5>Attendees: {Object.keys(this.state.attendeeList).length}</h5>
               <hr />
               {this.state.plenOptions.open ? (
@@ -599,7 +503,7 @@ export default class AdminDashboard extends Component {
                   className="btn-primary float-right"
                   value="Confirm!"
                   onClick={this.handleWaiverSubmit}
-                ></Input>
+                />
               </Col>
             </Row>
           </FormGroup>
@@ -641,7 +545,14 @@ export default class AdminDashboard extends Component {
         <br />
 
         <h2>All Attendees</h2>
-
+        <FormGroup>
+          <Input
+            type="text"
+            placeholder="Search by Name"
+            value={this.state.searchQuery}
+            onChange={this.handleSearchChange}
+          />
+        </FormGroup>
         <div id="table">
           <Table className="table">
             <thead>
@@ -663,7 +574,7 @@ export default class AdminDashboard extends Component {
           <hr />
           <h2>School List:</h2>
           {this.state.fullSchoolList.map((school, index) => {
-            return <p>{school}</p>;
+            return <p key={index}>{school}</p>;
           })}
         </div>
       </Container>
